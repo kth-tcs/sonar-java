@@ -30,11 +30,10 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
+
 import org.assertj.core.api.Fail;
+import org.sonar.java.AnalyzerMessage;
 import org.sonar.java.SonarComponents;
 import org.sonar.java.ast.JavaAstScanner;
 import org.sonar.java.ast.visitors.SubscriptionVisitor;
@@ -76,7 +75,7 @@ public class JavaCheckVerifier extends CheckVerifier {
   private String testJarsDirectory;
   private boolean providedJavaVersion = false;
   private JavaVersion javaVersion = new JavaVersionImpl();
-
+  private static boolean repair = false;
   private JavaCheckVerifier() {
     this.testJarsDirectory = DEFAULT_TEST_JARS_DIRECTORY;
   }
@@ -94,10 +93,18 @@ public class JavaCheckVerifier extends CheckVerifier {
    * By default, any jar or zip archive present in the folder defined by {@link JavaCheckVerifier#DEFAULT_TEST_JARS_DIRECTORY} will be used
    * to add extra classes to the classpath. If this folder is empty or does not exist, then the analysis will be based on the source of
    * the provided file.
-   *
-   * @param filename The file to be analyzed
+   *  @param filename The file to be analyzed
    * @param check The check to be used for the analysis
    */
+  public static Set<AnalyzerMessage> verify(String filename, JavaFileScanner check, boolean rep)
+  {
+      if(rep)
+      {
+          repair =true;
+          return scanFile(filename,check,new JavaCheckVerifier());
+      }
+      return null;
+  }
   public static void verify(String filename, JavaFileScanner check) {
     scanFile(filename, check, new JavaCheckVerifier());
   }
@@ -207,9 +214,14 @@ public class JavaCheckVerifier extends CheckVerifier {
     scanFile(filename, check, javaCheckVerifier);
   }
 
-  private static void scanFile(String filename, JavaFileScanner check, JavaCheckVerifier javaCheckVerifier) {
+  private static Set<AnalyzerMessage> scanFile(String filename, JavaFileScanner check, JavaCheckVerifier javaCheckVerifier) {
     List<File> classpath = getClassPath(javaCheckVerifier.testJarsDirectory);
+    if(repair)
+    {
+        return scanFile(filename, check, javaCheckVerifier, classpath);
+    }
     scanFile(filename, check, javaCheckVerifier, classpath);
+      return null;
   }
 
   static List<File> getClassPath(String jarsDirectory) {
@@ -254,11 +266,16 @@ public class JavaCheckVerifier extends CheckVerifier {
     return files;
   }
 
-  private static void scanFile(String filename, JavaFileScanner check, JavaCheckVerifier javaCheckVerifier, Collection<File> classpath) {
+  private static Set<AnalyzerMessage> scanFile(String filename, JavaFileScanner check, JavaCheckVerifier javaCheckVerifier, Collection<File> classpath) {
+      if(repair)
+      {
+          return scanFile(filename, check, javaCheckVerifier, classpath, true);
+      }
     scanFile(filename, check, javaCheckVerifier, classpath, true);
+      return null;
   }
 
-  private static void scanFile(String filename, JavaFileScanner check, JavaCheckVerifier javaCheckVerifier, Collection<File> classpath, boolean withSemantic) {
+  private static Set<AnalyzerMessage> scanFile(String filename, JavaFileScanner check, JavaCheckVerifier javaCheckVerifier, Collection<File> classpath, boolean withSemantic) {
     JavaFileScanner expectedIssueCollector = new ExpectedIssueCollector(javaCheckVerifier);
     VisitorsBridgeForTests visitorsBridge;
     File file = new File(filename);
@@ -273,7 +290,12 @@ public class JavaCheckVerifier extends CheckVerifier {
     if (testJavaFileScannerContext == null) {
       Fail.fail("Semantic was required but it was not possible to create it. Please checks the logs to find out the reason.");
     }
+    if(repair)
+    {
+        return testJavaFileScannerContext.getIssues();
+    }
     javaCheckVerifier.checkIssues(testJavaFileScannerContext.getIssues(), javaCheckVerifier.providedJavaVersion);
+      return null;
   }
 
   static class ExpectedIssueCollector extends SubscriptionVisitor {
