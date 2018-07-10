@@ -55,6 +55,17 @@ public class MultipleFilesJavaCheckVerifier extends CheckVerifier {
   public static void verify(List<String> filesToScan, JavaFileScanner check) {
     verify(new MultipleFilesJavaCheckVerifier(), filesToScan, check, false, true);
   }
+    public static Set<AnalyzerMessage> verify(List<String> filesToScan, JavaFileScanner check, boolean rep) {
+      if(rep)
+      {
+          MultipleFilesJavaCheckVerifier verifier = new MultipleFilesJavaCheckVerifier();
+          boolean withSemantic = true;
+          Set<AnalyzerMessage> issues = verifier.scanFiles(filesToScan, check, withSemantic);
+          return issues;
+      }
+        verify(new MultipleFilesJavaCheckVerifier(), filesToScan, check, false, true);
+        return null;
+    }
 
   /**
    * Verifies that no issues are raised after analyzing all the given files with the given check.
